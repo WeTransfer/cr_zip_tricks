@@ -1,7 +1,17 @@
 class Crzt::Writer
-  FOUR_BYTE_MAX_UINT              =         0xFFFFFFFF
-  TWO_BYTE_MAX_UINT               =             0xFFFF
-  EIGHT_BYTE_MAX_UINT             = 0xFFFFFFFFFFFFFFFF
+  # All of these are aliased to Int even though they do not have the same
+  # capacity internally - this is done to prevent callers from havint downcast
+  # to the very-specific-terrific Int subtype manually. We are not doing Golang here.
+  # We will however protect from overflows in the writing routines
+  alias ZipLocation = Int
+  alias ZipFilesize = Int
+  alias ZipCRC32 = Int
+  alias ZipGpFlags = Int
+  alias ZipStorageMode = Int
+
+  FOUR_BYTE_MAX_UINT              = UInt32::MAX
+  TWO_BYTE_MAX_UINT               = UInt16::MAX
+  EIGHT_BYTE_MAX_UINT             = UInt64::MAX
   CRZT_COMMENT                    = "Written using crzt"
   VERSION_NEEDED_TO_EXTRACT       = 20
   VERSION_NEEDED_TO_EXTRACT_ZIP64 = 45
@@ -20,23 +30,15 @@ class Crzt::Writer
     # We snatch the incantations from Rubyzip for this.
     unix_perms = 0o644
     file_type_file = 0o10
-    (file_type_file << 12 | (unix_perms & 0o7777)) << 16
+    ((file_type_file << 12 | (unix_perms & 0o7777)) << 16).to_u32
   end
 
   def dir_external_attrs
     # Applies permissions to an empty directory.
     unix_perms = 0o755
     file_type_dir = 0o04
-    (file_type_dir << 12 | (unix_perms & 0o7777)) << 16
+    ((file_type_dir << 12 | (unix_perms & 0o7777)) << 16).to_u32
   end
-
-  alias ZipLocation = Int
-  alias ZipFilesize = Int
-  alias ZipCRC32 = Int
-  alias ZipGpFlags = Int
-  alias ZipStorageMode = Int
-
-  BE = IO::ByteFormat::BigEndian
 
   def to_binary_dos_time(t : Time)
     (t.second / 2) + (t.minute << 5) + (t.hour << 11)
@@ -47,36 +49,36 @@ class Crzt::Writer
   end
 
   def write_uint8_le(io : IO, val : Int)
-    #  if val < 0 || val > 0xFF
-    #    raise(ArgumentError.new("Given value would overflow"))
-    #  end
+    if val < UInt8::MIN || val > UInt8::MAX
+      raise(ArgumentError.new("Unable to fit #{val} into uint8"))
+    end
     io.write_bytes(val.to_u8, IO::ByteFormat::LittleEndian)
   end
 
   def write_uint16_le(io : IO, val : Int)
-    if val < 0 || val > TWO_BYTE_MAX_UINT
-      raise(ArgumentError.new("Given value would overflow"))
+    if val < UInt16::MIN || val > UInt16::MAX
+      raise(ArgumentError.new("Unable to fit #{val} into uint16"))
     end
     io.write_bytes(val.to_u16, IO::ByteFormat::LittleEndian)
   end
 
   def write_uint32_le(io : IO, val : Int)
-    #   if val > (FOUR_BYTE_MAX_UINT + 1) || val < 0
-    #      raise(ArgumentError.new("Given value would overflow. #{val} with #{FOUR_BYTE_MAX_UINT} max"))
-    #    end
+    if val < UInt32::MIN || val > UInt32::MAX
+      raise(ArgumentError.new("Unable to fit #{val} into uint32"))
+    end
     io.write_bytes(val.to_u32, IO::ByteFormat::LittleEndian)
   end
 
   def write_int32_le(io : IO, val : Int)
-    #   if val > (FOUR_BYTE_MAX_UINT + 1) || val < 0
-    #      raise(ArgumentError.new("Given value would overflow. #{val} with #{FOUR_BYTE_MAX_UINT} max"))
-    #    end
+    if val < Int32::MIN || val > Int32::MAX
+      raise(ArgumentError.new("Unable to fit #{val} into int32"))
+    end
     io.write_bytes(val.to_i32, IO::ByteFormat::LittleEndian)
   end
 
   def write_uint64_le(io : IO, val : Int)
-    if val < 0 || val > EIGHT_BYTE_MAX_UINT
-      raise(ArgumentError.new("Given value would overflow"))
+    if UInt64::MIN < 0 || val > UInt64::MAX
+      raise(ArgumentError.new("Unable to fit #{val} into uint64"))
     end
     io.write_bytes(val.to_u64, IO::ByteFormat::LittleEndian)
   end
@@ -178,8 +180,8 @@ class Crzt::Writer
     exattrs = filename.ends_with?('/') ? dir_external_attrs : file_external_attrs
     write_uint32_le(io, exattrs)
 
-    header_offset = add_zip64 ? FOUR_BYTE_MAX_UINT : local_file_header_location
-    write_uint32_le(io, header_offset) # relative offset of local header 4 bytes
+    entry_header_offset = add_zip64 ? FOUR_BYTE_MAX_UINT : local_file_header_location
+    write_uint32_le(io, entry_header_offset) # relative offset of local header 4 bytes
 
     io << filename # file name (variable size)
 
