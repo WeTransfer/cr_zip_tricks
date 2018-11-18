@@ -140,13 +140,17 @@ class Crzt::Writer
     # of the local file header as a zip64 extra field, so we give up, give in, you loose, love will always win...
     add_zip64 = (local_file_header_location > FOUR_BYTE_MAX_UINT) || (compressed_size > FOUR_BYTE_MAX_UINT) || (uncompressed_size > FOUR_BYTE_MAX_UINT)
 
-    write_uint32_le(io, 0x02014b50) # central file header signature   4 bytes  (0x02014b50)
-    io.write(MADE_BY_SIGNATURE)     # version made by                 2 bytes
-    if add_zip64                    # version needed to extract       2 bytes
-      write_uint16_le(io, VERSION_NEEDED_TO_EXTRACT_ZIP64)
-    else
-      write_uint16_le(io, VERSION_NEEDED_TO_EXTRACT)
+    # Compose extra fields
+    extra_fields_io = IO::Memory.new
+    if add_zip64
+      write_zip64_extra_for_central_directory_file_header(extra_fields_io, uncompressed_size, compressed_size, local_file_header_location)
     end
+    write_timestamp_extra_field(extra_fields_io, mtime)
+    extra_fields_io.rewind
+
+    write_uint32_le(io, 0x02014b50)                                                              # central directory entry file header signature   4 bytes  (0x02014b50)
+    io.write(MADE_BY_SIGNATURE)                                                                  # version made by                 2 bytes
+    write_uint16_le(io, add_zip64 ? VERSION_NEEDED_TO_EXTRACT_ZIP64 : VERSION_NEEDED_TO_EXTRACT) # version needed to extract       2 bytes
 
     write_uint16_le(io, gp_flags)                  # general purpose bit flag        2 bytes
     write_uint16_le(io, storage_mode)              # compression method              2 bytes
@@ -158,14 +162,7 @@ class Crzt::Writer
     write_uint32_le(io, add_zip64 ? FOUR_BYTE_MAX_UINT : uncompressed_size)
 
     # Filename should not be longer than 0xFFFF otherwise this wont fit here
-    write_uint32_le(io, filename.bytesize) # file name length                2 bytes
-
-    extra_fields_io = IO::Memory.new
-    if add_zip64
-      write_zip64_extra_for_central_directory_file_header(extra_fields_io, local_file_header_location, compressed_size, uncompressed_size)
-    end
-    write_timestamp_extra_field(extra_fields_io, mtime)
-
+    write_uint16_le(io, filename.bytesize)    # file name length                2 bytes
     write_uint16_le(io, extra_fields_io.size) # extra field length              2 bytes
     write_uint16_le(io, 0)                    # file comment length             2 bytes
 
@@ -186,17 +183,17 @@ class Crzt::Writer
 
     io << filename # file name (variable size)
 
-    extra_fields_io.rewind
     IO.copy(extra_fields_io, io) # extra field (variable size)
     # (empty)                                          # file comment (variable size)
   end
 
-  def write_zip64_extra_for_central_directory_file_header(io : IO, compressed_size : Int, uncompressed_size : Int, local_file_header_location : ZipLocation)
-    write_uint16_le(io, 0x0001)            # 2 bytes    Tag for this "extra" block type
-    write_uint16_le(io, 28)                # 2 bytes    Size of this "extra" block. For us it will always be 28
-    write_uint64_le(io, uncompressed_size) # 2 bytes    Size of uncompressed data
-    write_uint64_le(io, compressed_size)   # 2 bytes      Size of compressed data
-    write_uint32_le(io, 0)                 # 4 bytes    Number of the disk on which this file starts
+  def write_zip64_extra_for_central_directory_file_header(io : IO, uncompressed_size : Int, compressed_size : Int, local_file_header_location : ZipLocation)
+    write_uint16_le(io, 0x0001)                     # 2 bytes    Tag for this "extra" block type
+    write_uint16_le(io, 28)                         # 2 bytes    Size of this "extra" block. For us it will always be 28
+    write_uint64_le(io, uncompressed_size)          # 8 bytes   Size of uncompressed data
+    write_uint64_le(io, compressed_size)            # 8 bytes   Size of compressed data
+    write_uint64_le(io, local_file_header_location) # 8 bytes   Local file header location in file
+    write_uint32_le(io, 0)                          # 4 bytes   Number of the disk on which this file starts
   end
 
   def write_end_of_central_directory(io : IO, start_of_central_directory_location : ZipLocation, central_directory_size : ZipLocation, num_files_in_archive : ZipLocation, comment : String = CRZT_COMMENT)
@@ -249,8 +246,10 @@ class Crzt::Writer
 
     write_uint32_le(io, zip64_required ? FOUR_BYTE_MAX_UINT : central_directory_size)              # size of the central directory    4 bytes
     write_uint32_le(io, zip64_required ? FOUR_BYTE_MAX_UINT : start_of_central_directory_location) # offset of start of central directory with respect to the starting disk number        4 bytes
-    write_uint16_le(io, comment.bytesize)                                                          # .ZIP file comment length        2 bytes
-    io << comment                                                                                  # .ZIP file comment       (variable size)
+
+    # Sneak in the default comment
+    write_uint16_le(io, comment.bytesize) # .ZIP file comment length        2 bytes
+    io << comment                         # .ZIP file comment       (variable size)
   end
 
   def write_data_descriptor(io : IO, compressed_size : ZipFilesize, uncompressed_size : ZipFilesize, crc32 : ZipCRC32)
@@ -315,15 +314,3 @@ class Crzt::Writer
     write_int32_le(io, mtime.to_unix) # Use a signed long, not the unsigned one used by the rest of the ZIP spec.
   end
 end
-
-# io = STDERR # IO::Memory.new
-# w = Crzt::Writer.new
-# w.write_local_file_header(io, filename = "foobar.txt", compressed_size = 999999, uncompressed_size = 999999, crc32 = 1234, gp_flags = 12, Time.now, storage_mode = 8)
-# w.write_central_directory_file_header(io, filename = "foobar.txt", compressed_size = 999999, uncompressed_size = 999999, crc32 = 1234, gp_flags = 12, Time.now, storage_mode = 8, offset = 99)
-# w.write_end_of_central_directory(io, start_of_central_directory_location = 7879, central_directory_size = 6789, num_files_in_archive = 3, comment = "Ohai!")
-
-# write_uint64_le(io, 99999998999999999)
-# io.size
-# io.rewind
-# io.gets(999)
-# io.gets(8) # => "\u{4}\u{3}\u{2}\u{1}"

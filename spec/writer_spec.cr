@@ -24,12 +24,12 @@ class ByteReader
     @io.read_bytes(UInt32, format = IO::ByteFormat::LittleEndian)
   end
 
-  def read_4b_signed
-    @io.read_bytes(Int32, format = IO::ByteFormat::LittleEndian)
-  end
-
   def read_8b
     @io.read_bytes(UInt64, format = IO::ByteFormat::LittleEndian)
+  end
+
+  def read_4b_signed
+    @io.read_bytes(Int32, format = IO::ByteFormat::LittleEndian)
   end
 
   def read_string_of(n)
@@ -49,14 +49,14 @@ describe Crzt::Writer do
       buf = IO::Memory.new
       mtime = Time.utc(2016, 7, 17, 13, 48)
 
-      Crzt::Writer.new.write_local_file_header(io = buf,
-        filename = "foo.bin",
-        compressed_size = 768,
-        uncompressed_size = 901,
-        crc32 = 456,
-        gp_flags = 12,
-        mtime,
-        storage_mode = 8)
+      Crzt::Writer.new.write_local_file_header(io: buf,
+        filename: "foo.bin",
+        compressed_size: 768,
+        uncompressed_size: 901,
+        crc32: 456,
+        gp_flags: 12,
+        mtime: mtime,
+        storage_mode: 8)
 
       br = ByteReader.new(buf)
       br.read_4b.should eq(0x04034b50) # Signature
@@ -89,14 +89,14 @@ describe Crzt::Writer do
       buf = IO::Memory.new
       mtime = Time.utc(2016, 7, 17, 13, 48)
 
-      Crzt::Writer.new.write_local_file_header(io = buf,
-        filename = "foo.bin",
-        gp_flags = 12,
-        crc32 = 456,
-        compressed_size = 768,
-        uncompressed_size = (0xFFFFFFFF + 1),
-        mtime,
-        storage_mode = 8)
+      Crzt::Writer.new.write_local_file_header(io: buf,
+        filename: "foo.bin",
+        gp_flags: 12,
+        crc32: 456,
+        compressed_size: 768,
+        uncompressed_size: (0xFFFFFFFF + 1),
+        mtime: mtime,
+        storage_mode: 8)
 
       br = ByteReader.new(buf)
       br.read_4b.should eq(0x04034b50)          # Signature
@@ -235,10 +235,10 @@ describe Crzt::Writer do
       br.read_2b.should eq(0)       # file comment
       br.read_2b.should eq(0)       # disk number, must be blanked to the
       # maximum value because of The Unarchiver bug
-      br.read_2b.should eq(0)               # internal file attributes
-      br.read_4b.should eq(2_175_008_768)   # external file attributes
-      br.read_4b.should eq(898_921)         # relative offset of local header
-      br.read_n(10).should eq("a-file.txt") # the filename
+      br.read_2b.should eq(0)                       # internal file attributes
+      br.read_4b.should eq(2_175_008_768)           # external file attributes
+      br.read_4b.should eq(898_921)                 # relative offset of local header
+      br.read_string_of(10).should eq("a-file.txt") # the filename
     end
 
     it "writes the file header for an entry that contains an empty directory" do
@@ -251,8 +251,8 @@ describe Crzt::Writer do
         compressed_size: 0,
         uncompressed_size: 0,
         mtime: Time.utc(2016, 2, 2, 14, 0),
-        crc32: 0,
-        filename: "directory/")
+        crc32: 544,
+        filename: "this-is-here-directory/")
 
       br = ByteReader.new(buf)
       br.read_4b.should eq(0x02014b50) # Central directory entry sig
@@ -260,21 +260,20 @@ describe Crzt::Writer do
       br.read_2b.should eq(20)         # version need to extract
       br.read_2b.should eq(555)        # general purpose bit flag (explicitly
       # set to bogus value to ensure we pass it through)
-      br.read_2b.should eq(23)     # compression method (explicitly set to bogus value)
-      br.read_2b.should eq(28_672) # last mod file time
-      br.read_2b.should eq(18_498) # last mod file date
-      br.read_4b.should eq(0)      # crc32
-      br.read_4b.should eq(0)      # compressed size
-      br.read_4b.should eq(0)      # uncompressed size
-      br.read_2b.should eq(10)     # filename length
-      br.read_2b.should eq(9)      # extra field length
-      br.read_2b.should eq(0)      # file comment
-      br.read_2b.should eq(0)      # disk number, must be blanked to the
-      # maximum value because of The Unarchiver bug
-      br.read_2b.should eq(0)               # internal file attributes
-      br.read_4b.should eq(1_106_051_072)   # external file attributes
-      br.read_4b.should eq(898_921)         # relative offset of local header
-      br.read_n(10).should eq("directory/") # the filename
+      br.read_2b.should eq(23)                                   # compression method (explicitly set to bogus value)
+      br.read_2b.should eq(28_672)                               # last mod file time
+      br.read_2b.should eq(18_498)                               # last mod file date
+      br.read_4b.should eq(544)                                  # crc32
+      br.read_4b.should eq(0)                                    # compressed size
+      br.read_4b.should eq(0)                                    # uncompressed size
+      br.read_2b.should eq(23)                                   # filename length
+      br.read_2b.should eq(9)                                    # extra field length
+      br.read_2b.should eq(0)                                    # file comment
+      br.read_2b.should eq(0)                                    # disk number (0, first disk)
+      br.read_2b.should eq(0)                                    # internal file attributes
+      br.read_4b.should eq(1_106_051_072)                        # external file attributes
+      br.read_4b.should eq(898_921)                              # relative offset of local header
+      br.read_string_of(23).should eq("this-is-here-directory/") # the filename
     end
 
     it "writes the file header for an entry that requires Zip64 extra because of \
@@ -300,23 +299,19 @@ describe Crzt::Writer do
       # to ensure we pass it through)
       br.read_2b.should eq(23) # compression method (explicitly
       # set to bogus value)
-      br.read_2b.should eq(28_672)     # last mod file time
-      br.read_2b.should eq(18_498)     # last mod file date
-      br.read_4b.should eq(89_765)     # crc32
-      br.read_4b.should eq(0xFFFFFFFF) # compressed size
-      br.read_4b.should eq(0xFFFFFFFF) # uncompressed size
-      br.read_2b.should eq(10)         # filename length
-      br.read_2b.should eq(41)         # extra field length
-      br.read_2b.should eq(0)          # file comment
-      br.read_2b.should eq(0xFFFF)     # disk number, must be blanked
-      # to the maximum value because
-      # of The Unarchiver bug
-      br.read_2b.should eq(0)               # internal file attributes
-      br.read_4b.should eq(2_175_008_768)   # external file attributes
-      br.read_4b.should eq(0xFFFFFFFF)      # relative offset of local header
-      br.read_n(10).should eq("a-file.txt") # the filename
-
-      # buf.should_not be_eof
+      br.read_2b.should eq(28_672)                  # last mod file time
+      br.read_2b.should eq(18_498)                  # last mod file date
+      br.read_4b.should eq(89_765)                  # crc32
+      br.read_4b.should eq(0xFFFFFFFF)              # compressed size
+      br.read_4b.should eq(0xFFFFFFFF)              # uncompressed size
+      br.read_2b.should eq(10)                      # filename length
+      br.read_2b.should eq(41)                      # extra field length
+      br.read_2b.should eq(0)                       # file comment
+      br.read_2b.should eq(0xFFFF)                  # disk number, must be blanked to the maximum value
+      br.read_2b.should eq(0)                       # internal file attributes
+      br.read_4b.should eq(2_175_008_768)           # external file attributes
+      br.read_4b.should eq(0xFFFFFFFF)              # relative offset of local header
+      br.read_string_of(10).should eq("a-file.txt") # the filename
 
       br.read_2b.should eq(1)               # Zip64 extra tag
       br.read_2b.should eq(28)              # Size of the Zip64 extra payload
@@ -357,10 +352,10 @@ describe Crzt::Writer do
       br.read_2b.should eq(0)          # file comment
       br.read_2b.should eq(0xFFFF)     # disk number, must be blanked to the
       # maximum value because of The Unarchiver bug
-      br.read_2b.should eq(0)               # internal file attributes
-      br.read_4b.should eq(2_175_008_768)   # external file attributes
-      br.read_4b.should eq(0xFFFFFFFF)      # relative offset of local header
-      br.read_n(10).should eq("a-file.txt") # the filename
+      br.read_2b.should eq(0)                       # internal file attributes
+      br.read_4b.should eq(2_175_008_768)           # external file attributes
+      br.read_4b.should eq(0xFFFFFFFF)              # relative offset of local header
+      br.read_string_of(10).should eq("a-file.txt") # the filename
 
       #  buf.should_not be_eof
       br.read_2b.should eq(1)               # Zip64 extra tag
@@ -402,10 +397,10 @@ describe Crzt::Writer do
       br.read_2b.should eq(0)          # file comment
       br.read_2b.should eq(0xFFFF)     # disk number, must be blanked to the
       # maximum value because of The Unarchiver bug
-      br.read_2b.should eq(0)               # internal file attributes
-      br.read_4b.should eq(2_175_008_768)   # external file attributes
-      br.read_4b.should eq(0xFFFFFFFF)      # relative offset of local header
-      br.read_n(10).should eq("a-file.txt") # the filename
+      br.read_2b.should eq(0)                       # internal file attributes
+      br.read_4b.should eq(2_175_008_768)           # external file attributes
+      br.read_4b.should eq(0xFFFFFFFF)              # relative offset of local header
+      br.read_string_of(10).should eq("a-file.txt") # the filename
 
       #  buf.should_not be_eof
       br.read_2b.should eq(1)               # Zip64 extra tag
@@ -424,7 +419,7 @@ describe Crzt::Writer do
       Crzt::Writer.new.write_end_of_central_directory(io: buf,
         start_of_central_directory_location: 9_091_211,
         central_directory_size: 9_091,
-        num_files_in_archive: num_files, comment: "")
+        num_files_in_archive: num_files, comment: "xyz")
 
       br = ByteReader.new(buf)
       br.read_4b.should eq(0x06054b50) # EOCD signature
@@ -438,9 +433,9 @@ describe Crzt::Writer do
       # the beginning of file/disk
 
       comment_length = br.read_2b
-      comment_length.should_not eq(0)
+      comment_length.should eq(3)
 
-      br.read_n(comment_length).should match(/ZipTricks/)
+      br.read_string_of(comment_length).should match(/xyz/)
     end
 
     it "writes out the custom comment" do
@@ -465,7 +460,7 @@ describe Crzt::Writer do
       Crzt::Writer.new.write_end_of_central_directory(io: buf,
         start_of_central_directory_location: 0xFFFFFFFF + 3,
         central_directory_size: 9091,
-        num_files_in_archive: num_files, comment: "")
+        num_files_in_archive: num_files)
 
       br = ByteReader.new(buf)
 
@@ -502,7 +497,7 @@ describe Crzt::Writer do
       comment_length = br.read_2b
       comment_length.should_not eq(0)
 
-      br.read_n(comment_length).should match(/ZipTricks/)
+      br.read_string_of(comment_length).should match(/crzt/i)
     end
 
     it "writes out the Zip64 EOCD if the archive has more than 0xFFFF files" do
