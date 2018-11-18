@@ -1,18 +1,16 @@
 class Crzt::Writer
-  FOUR_BYTE_MAX_UINT              = 0xFFFFFFFF
-  TWO_BYTE_MAX_UINT               =     0xFFFF
-  EIGHT_BYTE_MAX_UINT = 0xFFFFFFFFFFFFFFFF
-  ZIP_TRICKS_COMMENT              = "Written using crzt"
-  VERSION_MADE_BY                 = 52
+  FOUR_BYTE_MAX_UINT              =         0xFFFFFFFF
+  TWO_BYTE_MAX_UINT               =             0xFFFF
+  EIGHT_BYTE_MAX_UINT             = 0xFFFFFFFFFFFFFFFF
+  CRZT_COMMENT                    = "Written using crzt"
   VERSION_NEEDED_TO_EXTRACT       = 20
   VERSION_NEEDED_TO_EXTRACT_ZIP64 = 45
 
-  # begin
   # A combination of the VERSION_MADE_BY low byte and the OS type high byte
+  # VERSION_MADE_BY = 52
   # os_type = 3 # UNIX
   # [VERSION_MADE_BY, os_type].pack('CC')
-  # end
-  MADE_BY_SIGNATURE = UInt8.slice(4, 3)
+  MADE_BY_SIGNATURE = Bytes[52, 3]
 
   def file_external_attrs
     # These need to be set so that the unarchived files do not become executable on UNIX, for
@@ -49,9 +47,9 @@ class Crzt::Writer
   end
 
   def write_uint8_le(io : IO, val : Int)
-  #  if val < 0 || val > 0xFF
-  #    raise(ArgumentError.new("Given value would overflow"))
-  #  end
+    #  if val < 0 || val > 0xFF
+    #    raise(ArgumentError.new("Given value would overflow"))
+    #  end
     io.write_bytes(val.to_u8, IO::ByteFormat::LittleEndian)
   end
 
@@ -63,10 +61,17 @@ class Crzt::Writer
   end
 
   def write_uint32_le(io : IO, val : Int)
-#   if val > (FOUR_BYTE_MAX_UINT + 1) || val < 0
-#      raise(ArgumentError.new("Given value would overflow. #{val} with #{FOUR_BYTE_MAX_UINT} max"))
-#    end
+    #   if val > (FOUR_BYTE_MAX_UINT + 1) || val < 0
+    #      raise(ArgumentError.new("Given value would overflow. #{val} with #{FOUR_BYTE_MAX_UINT} max"))
+    #    end
     io.write_bytes(val.to_u32, IO::ByteFormat::LittleEndian)
+  end
+
+  def write_int32_le(io : IO, val : Int)
+    #   if val > (FOUR_BYTE_MAX_UINT + 1) || val < 0
+    #      raise(ArgumentError.new("Given value would overflow. #{val} with #{FOUR_BYTE_MAX_UINT} max"))
+    #    end
+    io.write_bytes(val.to_i32, IO::ByteFormat::LittleEndian)
   end
 
   def write_uint64_le(io : IO, val : Int)
@@ -121,7 +126,7 @@ class Crzt::Writer
     if requires_zip64
       write_zip64_extra_for_local_file_header(extra_fields_io, compressed_size, uncompressed_size)
     end
-    # write_timestamp_extra(extra_fields_io, mtime)
+    write_timestamp_extra_field(extra_fields_io, mtime)
 
     write_uint16_le(io, extra_fields_io.size) # extra field length              2 bytes
     extra_fields_io.rewind
@@ -159,7 +164,7 @@ class Crzt::Writer
     if add_zip64
       write_zip64_extra_for_central_directory_file_header(extra_fields_io, local_file_header_location, compressed_size, uncompressed_size)
     end
-    # extra_fields << timestamp_extra(mtime)
+    write_timestamp_extra_field(extra_fields_io, mtime)
 
     write_uint16_le(io, extra_fields_io.size) # extra field length              2 bytes
     write_uint16_le(io, 0)                    # file comment length             2 bytes
@@ -194,7 +199,7 @@ class Crzt::Writer
     write_uint32_le(io, 0)                 # 4 bytes    Number of the disk on which this file starts
   end
 
-  def write_end_of_central_directory(io : IO, start_of_central_directory_location : ZipLocation, central_directory_size : ZipLocation, num_files_in_archive : ZipLocation, comment : String)
+  def write_end_of_central_directory(io : IO, start_of_central_directory_location : ZipLocation, central_directory_size : ZipLocation, num_files_in_archive : ZipLocation, comment : String = CRZT_COMMENT)
     zip64_eocdr_offset = start_of_central_directory_location + central_directory_size
     zip64_required = central_directory_size > FOUR_BYTE_MAX_UINT ||
                      start_of_central_directory_location > FOUR_BYTE_MAX_UINT ||
@@ -269,13 +274,53 @@ class Crzt::Writer
       write_uint32_le(io, uncompressed_size)
     end
   end
+
+  # Writes the extended timestamp information field. The spec defines 2
+  # different formats - the one for the local file header can also accomodate the
+  # atime and ctime, whereas the one for the central directory can only take
+  # the mtime - and refers the reader to the local header extra to obtain the
+  # remaining times
+  def write_timestamp_extra_field(io : IO, mtime : Time)
+    #         Local-header version:
+    #
+    #         Value         Size        Description
+    #         -----         ----        -----------
+    # (time)  0x5455        Short       tag for this extra block type ("UT")
+    #         TSize         Short       total data size for this block
+    #         Flags         Byte        info bits
+    #         (ModTime)     Long        time of last modification (UTC/GMT)
+    #         (AcTime)      Long        time of last access (UTC/GMT)
+    #         (CrTime)      Long        time of original creation (UTC/GMT)
+    #
+    #         Central-header version:
+    #
+    #         Value         Size        Description
+    #         -----         ----        -----------
+    # (time)  0x5455        Short       tag for this extra block type ("UT")
+    #         TSize         Short       total data size for this block
+    #         Flags         Byte        info bits (refers to local header!)
+    #         (ModTime)     Long        time of last modification (UTC/GMT)
+    #
+    # The lower three bits of Flags in both headers indicate which time-
+    #       stamps are present in the LOCAL extra field:
+    #
+    #       bit 0           if set, modification time is present
+    #       bit 1           if set, access time is present
+    #       bit 2           if set, creation time is present
+    #       bits 3-7        reserved for additional timestamps; not set
+    flags = 0b10000000                # Set bit 1 only to indicate only mtime is present
+    write_uint16_le(io, 0x5455)       # tag for this extra block type ("UT")
+    write_uint16_le(io, 1 + 4)        # # the size of this block (1 byte used for the Flag + 1 long used for the timestamp)
+    write_uint8_le(io, flags)         # encode a single byte
+    write_int32_le(io, mtime.to_unix) # Use a signed long, not the unsigned one used by the rest of the ZIP spec.
+  end
 end
 
-io = STDERR #IO::Memory.new
-w = Crzt::Writer.new
-w.write_local_file_header(io, filename="foobar.txt", compressed_size=999999, uncompressed_size=999999, crc32=1234, gp_flags=12, Time.now, storage_mode = 8)
-w.write_central_directory_file_header(io, filename="foobar.txt", compressed_size=999999, uncompressed_size=999999, crc32=1234, gp_flags=12, Time.now, storage_mode = 8, offset=99)
-w.write_end_of_central_directory(io, start_of_central_directory_location=7879, central_directory_size=6789, num_files_in_archive=3, comment="Ohai!")
+# io = STDERR # IO::Memory.new
+# w = Crzt::Writer.new
+# w.write_local_file_header(io, filename = "foobar.txt", compressed_size = 999999, uncompressed_size = 999999, crc32 = 1234, gp_flags = 12, Time.now, storage_mode = 8)
+# w.write_central_directory_file_header(io, filename = "foobar.txt", compressed_size = 999999, uncompressed_size = 999999, crc32 = 1234, gp_flags = 12, Time.now, storage_mode = 8, offset = 99)
+# w.write_end_of_central_directory(io, start_of_central_directory_location = 7879, central_directory_size = 6789, num_files_in_archive = 3, comment = "Ohai!")
 
 # write_uint64_le(io, 99999998999999999)
 # io.size

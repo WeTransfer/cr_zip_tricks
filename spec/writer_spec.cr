@@ -1,6 +1,5 @@
 require "./spec_helper"
 
-
 class ByteReader
   def initialize(io : IO)
     @io = io
@@ -33,6 +32,10 @@ class ByteReader
     @io.read_bytes(UInt64, format = IO::ByteFormat::LittleEndian)
   end
 
+  def read_string_of(n)
+    @io.read_string(bytesize: n)
+  end
+
   def read_n(n)
     slice = Bytes.new(n)
     @io.read_fully(slice)
@@ -41,8 +44,6 @@ class ByteReader
 end
 
 describe Crzt::Writer do
-
-
   describe "#write_local_file_header" do
     it "writes the local file header for an entry that does not require Zip64" do
       buf = IO::Memory.new
@@ -70,7 +71,7 @@ describe Crzt::Writer do
       br.read_2b.should eq(7)          # filename size
       br.read_2b.should eq(9)          # extra fields size
 
-      br.read_n(7).should eq("foo.bin") # extra fields size
+      br.read_string_of(7).should eq("foo.bin") # extra fields size
 
       br.read_2b.should eq(0x5455) # Extended timestamp extra tag
       br.read_2b.should eq(5)      # Size of the timestamp extra
@@ -88,30 +89,30 @@ describe Crzt::Writer do
       buf = IO::Memory.new
       mtime = Time.utc(2016, 7, 17, 13, 48)
 
-      Crzt::Writer.new.write_local_file_header(io=buf,
-        filename="foo.bin",
-        gp_flags=12,
-        crc32=456,
-        compressed_size=768,
-        uncompressed_size=(0xFFFFFFFF + 1),
+      Crzt::Writer.new.write_local_file_header(io = buf,
+        filename = "foo.bin",
+        gp_flags = 12,
+        crc32 = 456,
+        compressed_size = 768,
+        uncompressed_size = (0xFFFFFFFF + 1),
         mtime,
-        storage_mode=8)
+        storage_mode = 8)
 
       br = ByteReader.new(buf)
-      br.read_4b.should eq(0x04034b50)  # Signature
-      br.read_2b.should eq(45)          # Version needed to extract
-      br.read_2b.should eq(12)          # gp flags
-      br.read_2b.should eq(8)           # storage mode
-      br.read_2b.should eq(28_160)      # DOS time
-      br.read_2b.should eq(18_673)      # DOS date
-      br.read_4b.should eq(456)         # CRC32
-      br.read_4b.should eq(0xFFFFFFFF)  # compressed size
-      br.read_4b.should eq(0xFFFFFFFF)  # uncompressed size
-      br.read_2b.should eq(7)           # filename size
-      br.read_2b.should eq(29)          # extra fields size (Zip64 + extended timestamp)
-      br.read_n(7).should eq("foo.bin") # extra fields size
+      br.read_4b.should eq(0x04034b50)          # Signature
+      br.read_2b.should eq(45)                  # Version needed to extract
+      br.read_2b.should eq(12)                  # gp flags
+      br.read_2b.should eq(8)                   # storage mode
+      br.read_2b.should eq(28_160)              # DOS time
+      br.read_2b.should eq(18_673)              # DOS date
+      br.read_4b.should eq(456)                 # CRC32
+      br.read_4b.should eq(0xFFFFFFFF)          # compressed size
+      br.read_4b.should eq(0xFFFFFFFF)          # uncompressed size
+      br.read_2b.should eq(7)                   # filename size
+      br.read_2b.should eq(29)                  # extra fields size (Zip64 + extended timestamp)
+      br.read_string_of(7).should eq("foo.bin") # extra fields size
 
-    #  buf.should_not be_eof
+      #  buf.should_not be_eof
 
       br.read_2b.should eq(1)              # Zip64 extra tag
       br.read_2b.should eq(16)             # Size of the Zip64 extra payload
@@ -134,20 +135,20 @@ describe Crzt::Writer do
         storage_mode: 8)
 
       br = ByteReader.new(buf)
-      br.read_4b.should eq(0x04034b50)  # Signature
-      br.read_2b.should eq(45)          # Version needed to extract
-      br.read_2b.should eq(12)          # gp flags
-      br.read_2b.should eq(8)           # storage mode
-      br.read_2b.should eq(28_160)      # DOS time
-      br.read_2b.should eq(18_673)      # DOS date
-      br.read_4b.should eq(456)         # CRC32
-      br.read_4b.should eq(0xFFFFFFFF)  # compressed size
-      br.read_4b.should eq(0xFFFFFFFF)  # uncompressed size
-      br.read_2b.should eq(7)           # filename size
-      br.read_2b.should eq(29)          # extra fields size
-      br.read_n(7).should eq("foo.bin") # extra fields size
+      br.read_4b.should eq(0x04034b50)          # Signature
+      br.read_2b.should eq(45)                  # Version needed to extract
+      br.read_2b.should eq(12)                  # gp flags
+      br.read_2b.should eq(8)                   # storage mode
+      br.read_2b.should eq(28_160)              # DOS time
+      br.read_2b.should eq(18_673)              # DOS date
+      br.read_4b.should eq(456)                 # CRC32
+      br.read_4b.should eq(0xFFFFFFFF)          # compressed size
+      br.read_4b.should eq(0xFFFFFFFF)          # uncompressed size
+      br.read_2b.should eq(7)                   # filename size
+      br.read_2b.should eq(29)                  # extra fields size
+      br.read_string_of(7).should eq("foo.bin") # extra fields size
 
-     #  buf.should_not be_eof
+      #  buf.should_not be_eof
 
       br.read_2b.should eq(1)              # Zip64 extra tag
       br.read_2b.should eq(16)             # Size of the Zip64 extra payload
@@ -160,17 +161,14 @@ describe Crzt::Writer do
     it "writes 4-byte sizes into the data descriptor for standard file sizes" do
       buf = IO::Memory.new
 
-      Crzt::Writer.new.write_data_descriptor(io=buf,
-        crc32=123,
-        compressed_size=89_821,
-        uncompressed_size=990_912)
+      Crzt::Writer.new.write_data_descriptor(io: buf, crc32: 123, compressed_size: 89_821, uncompressed_size: 990_912)
 
       br = ByteReader.new(buf)
       br.read_4b.should eq(0x08074b50) # Signature
       br.read_4b.should eq(123)        # CRC32
       br.read_4b.should eq(89_821)     # compressed size
       br.read_4b.should eq(990_912)    # uncompressed size
-   #   buf.should be_eof
+      #   buf.should be_eof
     end
 
     it "writes 8-byte sizes into the data descriptor for Zip64 compressed file size" do
@@ -202,7 +200,7 @@ describe Crzt::Writer do
       br.read_4b.should eq(123)            # CRC32
       br.read_8b.should eq(123)            # compressed size
       br.read_8b.should eq(0xFFFFFFFF + 1) # uncompressed size
-    #  buf.should be_eof
+      #  buf.should be_eof
     end
   end
 
@@ -318,7 +316,7 @@ describe Crzt::Writer do
       br.read_4b.should eq(0xFFFFFFFF)      # relative offset of local header
       br.read_n(10).should eq("a-file.txt") # the filename
 
-     # buf.should_not be_eof
+      # buf.should_not be_eof
 
       br.read_2b.should eq(1)               # Zip64 extra tag
       br.read_2b.should eq(28)              # Size of the Zip64 extra payload
@@ -364,7 +362,7 @@ describe Crzt::Writer do
       br.read_4b.should eq(0xFFFFFFFF)      # relative offset of local header
       br.read_n(10).should eq("a-file.txt") # the filename
 
-    #  buf.should_not be_eof
+      #  buf.should_not be_eof
       br.read_2b.should eq(1)               # Zip64 extra tag
       br.read_2b.should eq(28)              # Size of the Zip64 extra payload
       br.read_8b.should eq(901)             # uncompressed size
@@ -409,7 +407,7 @@ describe Crzt::Writer do
       br.read_4b.should eq(0xFFFFFFFF)      # relative offset of local header
       br.read_n(10).should eq("a-file.txt") # the filename
 
-    #  buf.should_not be_eof
+      #  buf.should_not be_eof
       br.read_2b.should eq(1)               # Zip64 extra tag
       br.read_2b.should eq(28)              # Size of the Zip64 extra payload
       br.read_8b.should eq(819_891)         # uncompressed size
@@ -453,10 +451,10 @@ describe Crzt::Writer do
         central_directory_size: 9_091,
         num_files_in_archive: 4,
         comment: comment)
-#
-#      size_and_comment = buf[((comment.bytesize + 2) * -1)..-1]
-#      comment_size = size_and_comment.unpack("v")[0]
-#      comment_size.should eq(comment.bytesize)
+      #
+      #      size_and_comment = buf[((comment.bytesize + 2) * -1)..-1]
+      #      comment_size = size_and_comment.unpack("v")[0]
+      #      comment_size.should eq(comment.bytesize)
     end
 
     it "writes out the Zip64 EOCD as well if the central directory is located \
