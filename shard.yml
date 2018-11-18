@@ -1,0 +1,9 @@
+name: crzt
+version: 0.1.0
+
+authors:
+  - Julik Tarkhanov <me@julik.nl>
+
+crystal: 0.27.0
+
+license: MIT
