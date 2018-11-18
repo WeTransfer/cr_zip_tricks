@@ -133,7 +133,7 @@ class Crzt::Writer
     write_uint16_le(io, extra_fields_io.size) # extra field length              2 bytes
     extra_fields_io.rewind
 
-    io << filename # file name (variable size)
+    io.write(filename.encode("utf-8")) # file name (variable size)
     IO.copy(extra_fields_io, io)
   end
 
@@ -183,7 +183,7 @@ class Crzt::Writer
     entry_header_offset = add_zip64 ? FOUR_BYTE_MAX_UINT : local_file_header_location
     write_uint32_le(io, entry_header_offset) # relative offset of local header 4 bytes
 
-    io << filename # file name (variable size)
+    io.write(filename.encode("utf-8")) # file name (variable size)
 
     IO.copy(extra_fields_io, io) # extra field (variable size)
     # (empty)                                          # file comment (variable size)
@@ -251,7 +251,7 @@ class Crzt::Writer
 
     # Sneak in the default comment
     write_uint16_le(io, comment.bytesize) # .ZIP file comment length        2 bytes
-    io << comment                         # .ZIP file comment       (variable size)
+    io.write(comment.encode("utf-8"))     # .ZIP file comment       (variable size)
   end
 
   def write_data_descriptor(io : IO, compressed_size : ZipFilesize, uncompressed_size : ZipFilesize, crc32 : ZipCRC32)
