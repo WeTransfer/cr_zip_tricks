@@ -1,4 +1,4 @@
-require "./zip_tricks"
+require "./version"
 
 class ZipTricks::Writer
   # All of these are aliased to Int even though they do not have the same

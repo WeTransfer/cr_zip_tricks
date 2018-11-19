@@ -3,6 +3,7 @@ require "./streamer"
 class ZipTricks::Sizer
   private class NullIO < IO
     def read(slice : Bytes)
+      raise IO::Error.new "Can't read from NullIO"
     end
 
     def write(slice : Bytes)
@@ -37,9 +38,3 @@ class ZipTricks::Sizer
     end
   end
 end
-
-size = ZipTricks::Sizer.size do |s|
-  s.predeclare_entry(filename: "deflated1.txt", uncompressed_size: 8969887, compressed_size: 1245, use_data_descriptor: true)
-  s.predeclare_entry(filename: "deflated2.txt", uncompressed_size: 4568, compressed_size: 4065, use_data_descriptor: true)
-end
-puts size
