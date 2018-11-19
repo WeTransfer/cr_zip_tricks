@@ -138,17 +138,3 @@ class Crzt::Streamer
     end
   end
 end
-
-Crzt::Streamer.new(STDOUT) do |s|
-  s.add_deflated("deflated.txt") do |sink|
-    sink << "Hello stranger! This is a chunk of text that is going to compress. Well."
-  end
-
-  s.add_stored("stored.txt") do |sink|
-    sink << "Goodbye stranger!"
-  end
-
-  s.add_stored("another_stored.txt") do |sink|
-    sink << "Goodbye stranger!"
-  end
-end
