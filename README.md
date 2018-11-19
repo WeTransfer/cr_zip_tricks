@@ -8,7 +8,7 @@ An alternate ZIP writer for Crystal, ported from [zip_tricks for Ruby](https://g
 ```yaml
 dependencies:
   zip_tricks:
-    github: WeTransfer/zip_tricks
+    github: WeTransfer/cr_zip_tricks
 ```
 2. Run `shards install`
 
@@ -34,7 +34,7 @@ end
 Sizing an archive before creation, to the byte:
 
 ```crystal
-require "zip_tricks"
+require "cr_zip_tricks"
 
 size = ZipTricks::Sizer.size do |s|
   s.predeclare_entry(filename: "deflated1.txt", uncompressed_size: 8969887, compressed_size: 1245, use_data_descriptor: true)
