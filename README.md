@@ -7,7 +7,7 @@ An alternate ZIP writer for Crystal, ported from [zip_tricks for Ruby](https://g
 1. Add the dependency to your `shard.yml`:
 ```yaml
 dependencies:
-  zip_tricks:
+  cr_zip_tricks:
     github: WeTransfer/cr_zip_tricks
 ```
 2. Run `shards install`
