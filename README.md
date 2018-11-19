@@ -1,6 +1,6 @@
-# zip_tricks
+# cr_zip_tricks
 
-TODO: Write a description here
+An alternate ZIP writer for Crystal, ported from [zip_tricks for Ruby](https://github.com/WeTransfer/zip_tricks)
 
 ## Installation
 
@@ -42,14 +42,13 @@ size = ZipTricks::Sizer.size do |s|
 end #=> 5630
 ```
 
-
 ## Development
 
 TODO: Write development instructions here
 
 ## Contributing
 
-1. Fork it (<https://github.com/julik/zip_tricks/fork>)
+1. Fork it (<https://github.com/WeTransfer/cr_zip_tricks/fork>)
 2. Create your feature branch (`git checkout -b my-new-feature`)
 3. Commit your changes (`git commit -am 'Add some feature'`)
 4. Push to the branch (`git push origin my-new-feature`)
