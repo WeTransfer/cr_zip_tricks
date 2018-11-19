@@ -14,10 +14,12 @@ dependencies:
 
 ## Usage
 
+Archiving to any IO:
+
 ```crystal
 require "crzt"
 
-Crzt::Streamer.new(STDOUT) do |s|
+Crzt::Streamer.archive(STDOUT) do |s|
   s.add_deflated("deflated.txt") do |sink|
     sink << "Hello stranger! This is a chunk of text that is going to compress. Well."
   end
@@ -28,6 +30,18 @@ Crzt::Streamer.new(STDOUT) do |s|
 end
 
 ```
+
+Sizing an archive before creation, to the byte:
+
+```crystal
+require "crzt"
+
+size = Crzt::Sizer.size do |s|
+  s.predeclare_entry(filename: "deflated1.txt", uncompressed_size: 8969887, compressed_size: 1245, use_data_descriptor: true)
+  s.predeclare_entry(filename: "deflated2.txt", uncompressed_size: 4568, compressed_size: 4065, use_data_descriptor: true)
+end #=> 5630
+```
+
 
 ## Development
 

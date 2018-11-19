@@ -39,7 +39,15 @@ class Crzt::Streamer
     @filenames = Set(String).new
     @entries = Array(Entry).new
     @writer = Crzt::Writer.new
-    yield self
+  end
+
+  def self.archive(io : IO)
+    streamer = new(io)
+    yield streamer
+    streamer.finish
+  end
+
+  def finish
     write_central_directory
     @filenames.clear
     @entries.clear
@@ -72,7 +80,7 @@ class Crzt::Streamer
     last_entry.uncompressed_size = sizer.offset
     last_entry.compressed_size = sizer.offset
     last_entry.crc32 = checksum.crc32
-    write_entry_data_descriptor(last_entry)
+    write_data_descriptor_for_last_entry
   end
 
   def add_deflated(filename : String)
@@ -90,10 +98,11 @@ class Crzt::Streamer
     last_entry.uncompressed_size = uncompressed_sizer.offset
     last_entry.compressed_size = compressed_sizer.offset
     last_entry.crc32 = checksum.crc32
-    write_entry_data_descriptor(last_entry)
+    write_data_descriptor_for_last_entry
   end
 
-  def write_entry_data_descriptor(entry)
+  def write_data_descriptor_for_last_entry
+    entry = @entries[-1]
     @writer.write_data_descriptor(io: @io,
       compressed_size: entry.compressed_size,
       uncompressed_size: entry.uncompressed_size,
@@ -113,6 +122,10 @@ class Crzt::Streamer
 
   def advance(by)
     @io.advance(by)
+  end
+
+  def bytesize
+    @io.offset
   end
 
   def write_central_directory
