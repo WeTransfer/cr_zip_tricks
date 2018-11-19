@@ -1,4 +1,4 @@
-class Crzt::OffsetIO < IO
+class ZipTricks::OffsetIO < IO
   def initialize(any_io : IO)
     @io = any_io
     @offset = 0_u64

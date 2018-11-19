@@ -1,4 +1,4 @@
-name: crzt
+name: zip_tricks
 version: 0.1.0
 authors: ["Julik Tarkhanov <me@julik.nl>"]
 description: "An alternate ZIP file writer for Crystal, ported from zip_tricks"

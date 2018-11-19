@@ -1,6 +1,6 @@
 require "crc32"
 
-class Crzt::CRC32Writer < IO
+class ZipTricks::CRC32Writer < IO
   getter count = 0_u32
   getter crc32 = CRC32.initial
   getter io : IO

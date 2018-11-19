@@ -1,6 +1,6 @@
 require "./spec_helper"
 
-describe Crzt do
+describe ZipTricks do
   it "works" do
     true.should eq(true)
   end

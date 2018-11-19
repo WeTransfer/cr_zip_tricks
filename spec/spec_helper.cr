@@ -1,2 +1,2 @@
 require "spec"
-require "../src/crzt"
+require "../src/zip_tricks"

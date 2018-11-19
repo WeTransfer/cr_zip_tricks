@@ -43,13 +43,13 @@ class ByteReader
   end
 end
 
-describe Crzt::Writer do
+describe ZipTricks::Writer do
   describe "#write_local_file_header" do
     it "writes the local file header for an entry that does not require Zip64" do
       buf = IO::Memory.new
       mtime = Time.utc(2016, 7, 17, 13, 48)
 
-      Crzt::Writer.new.write_local_file_header(io: buf,
+      ZipTricks::Writer.new.write_local_file_header(io: buf,
         filename: "foo.bin",
         compressed_size: 768,
         uncompressed_size: 901,
@@ -89,7 +89,7 @@ describe Crzt::Writer do
       buf = IO::Memory.new
       mtime = Time.utc(2016, 7, 17, 13, 48)
 
-      Crzt::Writer.new.write_local_file_header(io: buf,
+      ZipTricks::Writer.new.write_local_file_header(io: buf,
         filename: "foo.bin",
         gp_flags: 12,
         crc32: 456,
@@ -125,7 +125,7 @@ describe Crzt::Writer do
       buf = IO::Memory.new
       mtime = Time.utc(2016, 7, 17, 13, 48)
 
-      Crzt::Writer.new.write_local_file_header(io: buf,
+      ZipTricks::Writer.new.write_local_file_header(io: buf,
         gp_flags: 12,
         crc32: 456,
         compressed_size: 0xFFFFFFFF + 1,
@@ -161,7 +161,7 @@ describe Crzt::Writer do
     it "writes 4-byte sizes into the data descriptor for standard file sizes" do
       buf = IO::Memory.new
 
-      Crzt::Writer.new.write_data_descriptor(io: buf, crc32: 123, compressed_size: 89_821, uncompressed_size: 990_912)
+      ZipTricks::Writer.new.write_data_descriptor(io: buf, crc32: 123, compressed_size: 89_821, uncompressed_size: 990_912)
 
       br = ByteReader.new(buf)
       br.read_4b.should eq(0x08074b50) # Signature
@@ -174,7 +174,7 @@ describe Crzt::Writer do
     it "writes 8-byte sizes into the data descriptor for Zip64 compressed file size" do
       buf = IO::Memory.new
 
-      Crzt::Writer.new.write_data_descriptor(io: buf,
+      ZipTricks::Writer.new.write_data_descriptor(io: buf,
         crc32: 123,
         compressed_size: (0xFFFFFFFF + 1),
         uncompressed_size: 990_912)
@@ -190,7 +190,7 @@ describe Crzt::Writer do
     it "writes 8-byte sizes into the data descriptor for Zip64 uncompressed file size" do
       buf = IO::Memory.new
 
-      Crzt::Writer.new.write_data_descriptor(io: buf,
+      ZipTricks::Writer.new.write_data_descriptor(io: buf,
         crc32: 123,
         compressed_size: 123,
         uncompressed_size: 0xFFFFFFFF + 1)
@@ -208,7 +208,7 @@ describe Crzt::Writer do
     it "writes the file header for a small-ish entry" do
       buf = IO::Memory.new
 
-      Crzt::Writer.new.write_central_directory_file_header(io: buf,
+      ZipTricks::Writer.new.write_central_directory_file_header(io: buf,
         local_file_header_location: 898_921,
         gp_flags: 555,
         storage_mode: 23,
@@ -244,7 +244,7 @@ describe Crzt::Writer do
     it "writes the file header for an entry that contains an empty directory" do
       buf = IO::Memory.new
 
-      Crzt::Writer.new.write_central_directory_file_header(io: buf,
+      ZipTricks::Writer.new.write_central_directory_file_header(io: buf,
         local_file_header_location: 898_921,
         gp_flags: 555,
         storage_mode: 23,
@@ -280,7 +280,7 @@ describe Crzt::Writer do
         the uncompressed size" do
       buf = IO::Memory.new
 
-      Crzt::Writer.new.write_central_directory_file_header(io: buf,
+      ZipTricks::Writer.new.write_central_directory_file_header(io: buf,
         local_file_header_location: 898_921,
         gp_flags: 555,
         storage_mode: 23,
@@ -324,7 +324,7 @@ describe Crzt::Writer do
         the compressed size" do
       buf = IO::Memory.new
 
-      Crzt::Writer.new.write_central_directory_file_header(io: buf,
+      ZipTricks::Writer.new.write_central_directory_file_header(io: buf,
         local_file_header_location: 898_921,
         gp_flags: 555,
         storage_mode: 23,
@@ -369,7 +369,7 @@ describe Crzt::Writer do
         the local file header offset being beyound 4GB" do
       buf = IO::Memory.new
 
-      Crzt::Writer.new.write_central_directory_file_header(io: buf,
+      ZipTricks::Writer.new.write_central_directory_file_header(io: buf,
         local_file_header_location: 0xFFFFFFFFF + 1,
         gp_flags: 555,
         storage_mode: 23,
@@ -416,7 +416,7 @@ describe Crzt::Writer do
       buf = IO::Memory.new
 
       num_files = rand(8..190)
-      Crzt::Writer.new.write_end_of_central_directory(io: buf,
+      ZipTricks::Writer.new.write_end_of_central_directory(io: buf,
         start_of_central_directory_location: 9_091_211,
         central_directory_size: 9_091,
         num_files_in_archive: num_files, comment: "xyz")
@@ -441,7 +441,7 @@ describe Crzt::Writer do
     it "writes out the custom comment" do
       buf = IO::Memory.new
       comment = "Ohai mate"
-      Crzt::Writer.new.write_end_of_central_directory(io: buf,
+      ZipTricks::Writer.new.write_end_of_central_directory(io: buf,
         start_of_central_directory_location: 9_091_211,
         central_directory_size: 9_091,
         num_files_in_archive: 4,
@@ -457,7 +457,7 @@ describe Crzt::Writer do
       buf = IO::Memory.new
 
       num_files = rand(8..190)
-      Crzt::Writer.new.write_end_of_central_directory(io: buf,
+      ZipTricks::Writer.new.write_end_of_central_directory(io: buf,
         start_of_central_directory_location: 0xFFFFFFFF + 3,
         central_directory_size: 9091,
         num_files_in_archive: num_files)
@@ -497,13 +497,13 @@ describe Crzt::Writer do
       comment_length = br.read_2b
       comment_length.should_not eq(0)
 
-      br.read_string_of(comment_length).should match(/crzt/i)
+      br.read_string_of(comment_length).should match(/zip_tricks/i)
     end
 
     it "writes out the Zip64 EOCD if the archive has more than 0xFFFF files" do
       buf = IO::Memory.new
 
-      Crzt::Writer.new.write_end_of_central_directory(io: buf,
+      ZipTricks::Writer.new.write_end_of_central_directory(io: buf,
         start_of_central_directory_location: 123,
         central_directory_size: 9_091,
         num_files_in_archive: 0xFFFF + 1, comment: "")
@@ -525,7 +525,7 @@ describe Crzt::Writer do
     it "writes out the Zip64 EOCD if the central directory size exceeds 0xFFFFFFFF" do
       buf = IO::Memory.new
 
-      Crzt::Writer.new.write_end_of_central_directory(io: buf,
+      ZipTricks::Writer.new.write_end_of_central_directory(io: buf,
         start_of_central_directory_location: 123,
         central_directory_size: 0xFFFFFFFF + 2,
         num_files_in_archive: 5, comment: "Foooo")

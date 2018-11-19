@@ -1,6 +1,6 @@
 require "./streamer"
 
-class Crzt::Sizer
+class ZipTricks::Sizer
   private class NullIO < IO
     def read(slice : Bytes)
     end
@@ -11,7 +11,7 @@ class Crzt::Sizer
   end
 
   def self.size
-    streamer = Crzt::Streamer.new(NullIO.new)
+    streamer = ZipTricks::Streamer.new(NullIO.new)
     sizer = new(streamer)
 
     yield(sizer)
@@ -20,7 +20,7 @@ class Crzt::Sizer
     streamer.bytesize
   end
 
-  def initialize(streamer : Crzt::Streamer)
+  def initialize(streamer : ZipTricks::Streamer)
     @streamer = streamer
   end
 
@@ -38,7 +38,7 @@ class Crzt::Sizer
   end
 end
 
-size = Crzt::Sizer.size do |s|
+size = ZipTricks::Sizer.size do |s|
   s.predeclare_entry(filename: "deflated1.txt", uncompressed_size: 8969887, compressed_size: 1245, use_data_descriptor: true)
   s.predeclare_entry(filename: "deflated2.txt", uncompressed_size: 4568, compressed_size: 4065, use_data_descriptor: true)
 end

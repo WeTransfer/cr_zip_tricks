@@ -3,7 +3,7 @@ require "./offset_io"
 require "./crc32_writer"
 require "flate"
 
-class Crzt::Streamer
+class ZipTricks::Streamer
   STORED   = 0
   DEFLATED = 8
 
@@ -35,10 +35,10 @@ class Crzt::Streamer
 
   def initialize(io : IO)
     @raw_io = io
-    @io = Crzt::OffsetIO.new(@raw_io)
+    @io = ZipTricks::OffsetIO.new(@raw_io)
     @filenames = Set(String).new
     @entries = Array(Entry).new
-    @writer = Crzt::Writer.new
+    @writer = ZipTricks::Writer.new
   end
 
   def self.archive(io : IO)
@@ -71,8 +71,8 @@ class Crzt::Streamer
 
   def add_stored(filename : String)
     predeclare_entry(filename, uncompressed_size: 0, compressed_size: 0, crc32: 0, storage_mode: STORED, use_data_descriptor: true)
-    sizer = Crzt::OffsetIO.new(@io)
-    checksum = Crzt::CRC32Writer.new(sizer)
+    sizer = ZipTricks::OffsetIO.new(@io)
+    checksum = ZipTricks::CRC32Writer.new(sizer)
 
     yield checksum # for writing, the caller can write to it as an IO
 
@@ -86,10 +86,10 @@ class Crzt::Streamer
   def add_deflated(filename : String)
     predeclare_entry(filename, uncompressed_size: 0, compressed_size: 0, crc32: 0, storage_mode: DEFLATED, use_data_descriptor: true)
     # The "IO sandwich"
-    compressed_sizer = Crzt::OffsetIO.new(@io)
+    compressed_sizer = ZipTricks::OffsetIO.new(@io)
     flater_io = Flate::Writer.new(compressed_sizer)
-    uncompressed_sizer = Crzt::OffsetIO.new(flater_io)
-    checksum = Crzt::CRC32Writer.new(uncompressed_sizer)
+    uncompressed_sizer = ZipTricks::OffsetIO.new(flater_io)
+    checksum = ZipTricks::CRC32Writer.new(uncompressed_sizer)
 
     yield checksum # for writing, the caller can write to it as an IO
 
