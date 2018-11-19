@@ -1,3 +1,5 @@
+require "./crzt"
+
 class Crzt::Writer
   # All of these are aliased to Int even though they do not have the same
   # capacity internally - this is done to prevent callers from havint downcast
@@ -12,7 +14,7 @@ class Crzt::Writer
   FOUR_BYTE_MAX_UINT              = UInt32::MAX
   TWO_BYTE_MAX_UINT               = UInt16::MAX
   EIGHT_BYTE_MAX_UINT             = UInt64::MAX
-  CRZT_COMMENT                    = "Written using crzt"
+  CRZT_COMMENT                    = "Written using crzt v.#{Crzt::VERSION}"
   VERSION_NEEDED_TO_EXTRACT       = 20
   VERSION_NEEDED_TO_EXTRACT_ZIP64 = 45
 
