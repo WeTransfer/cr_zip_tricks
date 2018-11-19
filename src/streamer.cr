@@ -7,6 +7,9 @@ class Crzt::Streamer
   STORED   = 0
   DEFLATED = 8
 
+  class DuplicateFilename < ArgumentError
+  end
+
   class Entry
     property filename = ""
     property entry_offset_in_file = 0_u64
@@ -42,21 +45,24 @@ class Crzt::Streamer
     @entries.clear
   end
 
-  def predeclare_entry(filename : String, compressed_size : Int, uncompressed_size : Int, crc32 : Int, storage_mode : Int, use_data_descriptor : Bool = false)
+  def predeclare_entry(filename : String, uncompressed_size : Int, compressed_size : Int, crc32 : Int, storage_mode : Int, use_data_descriptor : Bool = false)
     entry = Entry.new
     entry.filename = filename
     entry.use_data_descriptor = false
     entry.storage_mode = storage_mode
     entry.entry_offset_in_file = @io.offset
     entry.use_data_descriptor = use_data_descriptor
+    entry.uncompressed_size = uncompressed_size.to_u64
+    entry.compressed_size = uncompressed_size.to_u64
     entry.crc32 = crc32.to_u32
+
     check_dupe_filename!(filename)
     @entries << entry
     write_local_entry_header(entry)
   end
 
   def add_stored(filename : String)
-    predeclare_entry(filename, compressed_size: 0, uncompressed_size: 0, crc32: 0, storage_mode: STORED, use_data_descriptor: true)
+    predeclare_entry(filename, uncompressed_size: 0, compressed_size: 0, crc32: 0, storage_mode: STORED, use_data_descriptor: true)
     sizer = Crzt::OffsetIO.new(@io)
     checksum = Crzt::CRC32Writer.new(sizer)
 
@@ -70,7 +76,7 @@ class Crzt::Streamer
   end
 
   def add_deflated(filename : String)
-    predeclare_entry(filename, compressed_size: 0, uncompressed_size: 0, crc32: 0, storage_mode: DEFLATED, use_data_descriptor: true)
+    predeclare_entry(filename, uncompressed_size: 0, compressed_size: 0, crc32: 0, storage_mode: DEFLATED, use_data_descriptor: true)
     # The "IO sandwich"
     compressed_sizer = Crzt::OffsetIO.new(@io)
     flater_io = Flate::Writer.new(compressed_sizer)
@@ -132,7 +138,7 @@ class Crzt::Streamer
 
   private def check_dupe_filename!(filename)
     if @filenames.includes?(filename)
-      raise(ArgumentError.new("The archive already contains an entry named #{filename.inspect}"))
+      raise(DuplicateFilename.new("The archive already contains an entry named #{filename.inspect}"))
     else
       @filenames.add(filename)
     end
