@@ -43,6 +43,31 @@ end
 size #=> 5641
 ```
 
+## Using it with Kemal or other web app skeleton
+
+Here is a Kemal app that outputs itself, 1000 times, compressed:
+
+```crystal
+require "kemal"
+require "cr_zip_tricks"
+
+get "/quine.zip" do |env|
+  env.response.headers["Content-Type"] = "application/octet-stream"
+  env.response.headers["Content-Disposition"] = "attachment"
+  ZipTricks::Streamer.archive(env.response) do |s|
+    1000.times do |i|
+      s.add_deflated("cr_download_server_%05d.cr" % i) do |sink|
+        File.open(__FILE__, "rb") do |f|
+          IO.copy(f, sink)
+        end
+      end
+    end
+  end
+end
+
+Kemal.run
+```
+
 ## Development
 
 TODO: Write development instructions here
