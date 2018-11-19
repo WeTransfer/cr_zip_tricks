@@ -49,6 +49,8 @@ class ZipTricks::Streamer
 
   def finish
     write_central_directory
+    @filenames.clear
+    @entries.clear
   end
 
   def predeclare_entry(filename : String, uncompressed_size : Int, compressed_size : Int, crc32 : Int, storage_mode : Int, use_data_descriptor : Bool = false)
