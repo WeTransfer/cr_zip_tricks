@@ -1,9 +1,6 @@
 name: crzt
 version: 0.1.0
-
-authors:
-  - Julik Tarkhanov <me@julik.nl>
-
+authors: ["Julik Tarkhanov <me@julik.nl>"]
+description: "An alternate ZIP file writer for Crystal, ported from zip_tricks"
 crystal: 0.27.0
-
 license: MIT
