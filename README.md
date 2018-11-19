@@ -8,7 +8,7 @@ An alternate ZIP writer for Crystal, ported from [zip_tricks for Ruby](https://g
 ```yaml
 dependencies:
   zip_tricks:
-    github: julik/zip_tricks
+    github: WeTransfer/zip_tricks
 ```
 2. Run `shards install`
 
