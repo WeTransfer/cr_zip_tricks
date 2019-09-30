@@ -32,22 +32,26 @@ class ZipTricks::Writer
     # We snatch the incantations from Rubyzip for this.
     unix_perms = 0o644
     file_type_file = 0o10
-    ((file_type_file << 12 | (unix_perms & 0o7777)) << 16).to_u32
+    ((file_type_file << 12 | (unix_perms & 0o7777)) << 16).to_u32!
   end
 
   def dir_external_attrs
     # Applies permissions to an empty directory.
     unix_perms = 0o755
     file_type_dir = 0o04
-    ((file_type_dir << 12 | (unix_perms & 0o7777)) << 16).to_u32
+    ((file_type_dir << 12 | (unix_perms & 0o7777)) << 16).to_u32!
   end
 
-  def to_binary_dos_time(t : Time)
-    (t.second / 2) + (t.minute << 5) + (t.hour << 11)
+  private def to_binary_dos_time(t : Time)
+    (t.hour << 11) |
+      (t.minute << 5) |
+      (t.second // 2)
   end
 
-  def to_binary_dos_date(t : Time)
-    t.day + (t.month << 5) + ((t.year - 1980) << 9)
+  private def to_binary_dos_date(t : Time)
+    ((t.year - 1980) << 9) |
+      (t.month << 5) |
+      t.day
   end
 
   def write_uint8_le(io : IO, val : Int)
@@ -201,7 +205,7 @@ class ZipTricks::Writer
   end
 
   def write_end_of_central_directory(io : IO, start_of_central_directory_location : ZipLocation, central_directory_size : ZipLocation, num_files_in_archive : ZipLocation, comment : String = CRZT_COMMENT)
-    zip64_eocdr_offset = start_of_central_directory_location + central_directory_size
+    zip64_eocdr_offset = start_of_central_directory_location.to_u64 + central_directory_size.to_u64
     zip64_required = central_directory_size > FOUR_BYTE_MAX_UINT ||
                      start_of_central_directory_location > FOUR_BYTE_MAX_UINT ||
                      zip64_eocdr_offset > FOUR_BYTE_MAX_UINT ||

@@ -18,7 +18,7 @@ class ZipTricks::OffsetIO < IO
     raise IO::Error.new "Can't read from CRC32Writer"
   end
 
-  def write(slice : Bytes)
+  def write(slice : Bytes) : Nil
     @io.write(slice)
     @offset += slice.size
     nil

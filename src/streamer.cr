@@ -116,7 +116,7 @@ class ZipTricks::Streamer
       uncompressed_size: entry.uncompressed_size,
       crc32: entry.crc32,
       gp_flags: entry.gp_flags,
-      mtime: Time.now,
+      mtime: Time.utc,
       storage_mode: entry.storage_mode)
   end
 
@@ -137,7 +137,7 @@ class ZipTricks::Streamer
         uncompressed_size: entry.uncompressed_size,
         crc32: entry.crc32,
         gp_flags: entry.gp_flags,
-        mtime: Time.now,
+        mtime: Time.utc,
         storage_mode: entry.storage_mode,
         local_file_header_location: entry.entry_offset_in_file)
     end

@@ -6,7 +6,7 @@ class ZipTricks::Sizer
       raise IO::Error.new "Can't read from NullIO"
     end
 
-    def write(slice : Bytes)
+    def write(slice : Bytes) : Nil
       nil
     end
   end
