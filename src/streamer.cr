@@ -1,7 +1,7 @@
 require "./writer"
 require "./offset_io"
 require "./crc32_writer"
-require "flate"
+require "compress/deflate"
 
 class ZipTricks::Streamer
   STORED   = 0
@@ -13,7 +13,7 @@ class ZipTricks::Streamer
   class Entry
     property filename = ""
     property entry_offset_in_file = 0_u64
-    property crc32 = CRC32.initial
+    property crc32 = Digest::CRC32.initial
     property uncompressed_size = 0_u64
     property compressed_size = 0_u64
     property use_data_descriptor = false
@@ -87,7 +87,7 @@ class ZipTricks::Streamer
     predeclare_entry(filename, uncompressed_size: 0, compressed_size: 0, crc32: 0, storage_mode: DEFLATED, use_data_descriptor: true)
     # The "IO sandwich"
     compressed_sizer = ZipTricks::OffsetIO.new(@io)
-    flater_io = Flate::Writer.new(compressed_sizer)
+    flater_io = Compress::Deflate::Writer.new(compressed_sizer)
     uncompressed_sizer = ZipTricks::OffsetIO.new(flater_io)
     checksum = ZipTricks::CRC32Writer.new(uncompressed_sizer)
 
