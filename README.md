@@ -1,5 +1,7 @@
 # cr_zip_tricks
 
+[![Crystal CI](https://github.com/WeTransfer/cr_zip_tricks/actions/workflows/crystal.yml/badge.svg)](https://github.com/WeTransfer/cr_zip_tricks/actions/workflows/crystal.yml)
+
 An alternate ZIP writer for Crystal, ported from [zip_tricks for Ruby](https://github.com/WeTransfer/zip_tricks)
 
 ## Installation
