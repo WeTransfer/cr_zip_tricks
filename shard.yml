@@ -2,5 +2,5 @@ name: cr_zip_tricks
 version: 0.2.0
 authors: ["Julik Tarkhanov <me@julik.nl>"]
 description: "An alternate ZIP writer for Crystal, ported from zip_tricks for Ruby"
-crystal: 0.35.1
+crystal: ">= 0.35.1"
 license: MIT
