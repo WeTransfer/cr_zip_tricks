@@ -69,8 +69,8 @@ class ZipTricks::Streamer
     write_local_entry_header(entry)
   end
 
-  def add_stored(filename : String)
-    predeclare_entry(filename, uncompressed_size: 0, compressed_size: 0, crc32: 0, storage_mode: STORED, use_data_descriptor: true)
+  def add_stored(filename : String, uncompressed_size : Int = 0)
+    predeclare_entry(filename, uncompressed_size: uncompressed_size, compressed_size: uncompressed_size, crc32: 0, storage_mode: STORED, use_data_descriptor: true)
     sizer = ZipTricks::OffsetIO.new(@io)
     checksum = ZipTricks::CRC32Writer.new(sizer)
 
@@ -83,8 +83,8 @@ class ZipTricks::Streamer
     write_data_descriptor_for_last_entry
   end
 
-  def add_deflated(filename : String)
-    predeclare_entry(filename, uncompressed_size: 0, compressed_size: 0, crc32: 0, storage_mode: DEFLATED, use_data_descriptor: true)
+  def add_deflated(filename : String, uncompressed_size : Int = 0)
+    predeclare_entry(filename, uncompressed_size: uncompressed_size, compressed_size: 0, crc32: 0, storage_mode: DEFLATED, use_data_descriptor: true)
     # The "IO sandwich"
     compressed_sizer = ZipTricks::OffsetIO.new(@io)
     flater_io = Compress::Deflate::Writer.new(compressed_sizer)
